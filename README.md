@@ -24,7 +24,7 @@ If you're new to Git, follow these steps:
    ```
 3. Clone the repository:
    ```bash
-   git clone https://github.com/CFC-Servers/gm_addon_optimization_tricks.git
+   git clone https://github.com/wrefgtzweve/gm_addon_optimization_tricks.git
    ```
 4. Enter the project directory:
    ```bash
