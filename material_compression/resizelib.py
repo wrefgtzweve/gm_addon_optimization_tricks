@@ -42,7 +42,7 @@ def cleanupVTF(path: str, max_size: int = 9999) -> bool:
         format_changed = True
 
     if vtf.frame_count > 1:
-        print("Skipping", path, "because it has multiple frames.")
+        print("Skipping resize for animated VTF:", path)
         if format_changed:
             vtf.bake_to_file(path)
             return True
