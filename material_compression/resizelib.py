@@ -26,10 +26,19 @@ def cleanupVTF(path: str, max_size: int = 9999) -> bool:
     if not path.endswith(".vtf"):
         return False
     
-    vtf = vtfpp.VTF(path)
+    try:
+        vtf = vtfpp.VTF(path)
+    except Exception as e:
+        print(f"✗ {path} - failed to load VTF: {e}")
+        return False
 
-    image_data = vtf.get_image_data_as_rgba8888(0)
-    image = Image.frombytes("RGBA", (vtf.width, vtf.height), image_data)
+    try:
+        image_data = vtf.get_image_data_as_rgba8888(0)
+        image = Image.frombytes("RGBA", (vtf.width, vtf.height), image_data)
+    except Exception as e:
+        print(f"✗ {path} - failed to extract image data: {e}")
+        return False
+
     _, _, _, a = image.split()
 
     best_format = vtfpp.ImageFormat.DXT1
