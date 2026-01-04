@@ -2,6 +2,7 @@ import os
 import sys
 from contextlib import contextmanager
 from io import StringIO
+import signal
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
@@ -564,6 +565,7 @@ def main():
         myappid = 'cfcservers.gmaddonoptimization.tools.1.0'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
     window.show()
