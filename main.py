@@ -13,6 +13,7 @@ from unused_files.remove_game_files import remove_game_files
 from material_compression.resize_and_compress import resize_and_compress
 from material_compression.resize_png import clamp_pngs
 from material_compression.remove_mipmaps import remove_mipmaps
+from material_compression.resize_singlecolor import resize_single_color_images
 from sound_compression.wav_to_mp3 import wav_to_mp3
 from sound_compression.wav_to_ogg import wav_to_ogg
 from sound_compression.mp3_to_ogg import mp3_to_ogg
@@ -160,6 +161,8 @@ class MainWindow(QtWidgets.QMainWindow):
                    tooltip="Resize PNG images to a maximum size.\nReduces file size for UI elements and other PNG assets.\nUsually PNG's don't need to be very large as they are often used for icons or UI elements.")
         add_button(textures_grid, 4, "Resave VTF files (autorefresh)", self.on_resave_vtf,
                    tooltip="Resave all VTF files to force the game to refresh cached textures.")
+        add_button(textures_grid, 5, "Resize single-color VTFs to 4x4", self.on_resize_single_color, recommended=True,
+                   tooltip="Find and resize all single-color VTFs to 4x4 pixels. Greatly reduces file size for solid color textures.")
         textures_group.setLayout(textures_grid)
         actions_layout.addWidget(textures_group)
 
@@ -556,6 +559,16 @@ class MainWindow(QtWidgets.QMainWindow):
             return 0, count
 
         self.start_task("Resave VTF files", task)
+
+    def on_resize_single_color(self):
+        folder = self.ensure_folder()
+        if not folder:
+            return
+        
+        def task():
+            return resize_single_color_images(folder, progress_callback=self.worker.progress.emit)
+        
+        self.start_task("Resize single-color images", task, determinate=True)
 
 
 def main():
