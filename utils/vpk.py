@@ -18,10 +18,9 @@ def get_vpk_files(gamefolder: str) -> Set[str]:
     vpk_files = {}
     vpk_count = 0
 
-    # Find all VPK files in the game folder
     vpk_patterns = [
-        os.path.join(gamefolder, "**", "*.vpk"),
-        os.path.join(gamefolder, "*.vpk")
+        os.path.join(gamefolder, "**", "*_dir.vpk"),
+        os.path.join(gamefolder, "*_dir.vpk")
     ]
 
     found_vpks = []
