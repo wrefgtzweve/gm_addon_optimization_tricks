@@ -32,14 +32,10 @@ def cleanupVTF(path: str, max_size: int = 9999) -> bool:
         print(f"✗ {path} - failed to load VTF: {e}")
         return False
 
-    # OPTIMIZATION: Check animated VTFs early - skip expensive image extraction
     if vtf.frame_count > 1:
-        # Animated VTFs can't be resized, but might need format change
-        # Only process if not already DXT format
         if vtf.format in (vtfpp.ImageFormat.DXT1, vtfpp.ImageFormat.DXT5):
             print("Skipping resize for animated VTF:", path)
             return False
-        # For animated, try to extract just to check alpha
         try:
             image_data = vtf.get_image_data_as_rgba8888(0)
             image = Image.frombytes("RGBA", (vtf.width, vtf.height), image_data)
@@ -55,15 +51,12 @@ def cleanupVTF(path: str, max_size: int = 9999) -> bool:
         print("Skipping resize for animated VTF:", path)
         return False
 
-    # OPTIMIZATION: Skip if already optimal (DXT format + under size limit)
     needs_resize = vtf.width > max_size or vtf.height > max_size
     already_dxt = vtf.format in (vtfpp.ImageFormat.DXT1, vtfpp.ImageFormat.DXT5)
     
     if not needs_resize and already_dxt:
-        # Already optimal, skip entirely
         return False
 
-    # Only extract image data if we actually need it
     try:
         image_data = vtf.get_image_data_as_rgba8888(0)
         image = Image.frombytes("RGBA", (vtf.width, vtf.height), image_data)
