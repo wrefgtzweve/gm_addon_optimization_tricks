@@ -20,15 +20,25 @@ def resize_and_compress(folder, size, progress_callback=None):
 
     # Process collected files
     for idx, file_path in enumerate(vtf_files):
-        old_size_temp = os.path.getsize(file_path)
-        converted = cleanupVTF(file_path, size)
-        if converted:
-            replace_count += 1
-            new_size += os.path.getsize(file_path)
-            old_size += old_size_temp
-        else:
-            new_size += old_size_temp
-            old_size += old_size_temp
+        try:
+            old_size_temp = os.path.getsize(file_path)
+            converted = cleanupVTF(file_path, size)
+            if converted:
+                replace_count += 1
+                new_size += os.path.getsize(file_path)
+                old_size += old_size_temp
+            else:
+                new_size += old_size_temp
+                old_size += old_size_temp
+        except Exception as e:
+            print(f"Error processing {file_path}: {e}")
+            # Count file as unchanged
+            try:
+                file_size = os.path.getsize(file_path)
+                old_size += file_size
+                new_size += file_size
+            except:
+                pass
         
         if progress_callback:
             progress_callback(idx + 1, total_files)
