@@ -1,5 +1,6 @@
 import os
 from resizelib import cleanupVTF
+from utils.formatting import format_size
 
 # Edit these variables
 PATH_TO_FILE = r"garrysmod\addons\addon_name\materials\material_name.vtf"
@@ -27,4 +28,4 @@ if replace_count == 0:
     print("No files were replaced.")
 else:
     print("Reduced size by ", round((1 - new_size / old_size) * 100, 2), "%")
-    print("Reduced size by ", round((old_size - new_size) / 1000000, 2), "mbs")
+    print("Reduced size by ", format_size(old_size - new_size))

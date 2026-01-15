@@ -1,6 +1,7 @@
 import os
 import time
 from material_compression.resizelib import cleanupVTF
+from utils.formatting import format_size
 
 def resize_and_compress(folder, size, progress_callback=None):
     old_size = 0
@@ -43,7 +44,7 @@ def resize_and_compress(folder, size, progress_callback=None):
     else:
         print("Clamped to", size, "resolution.")
         print("Reduced size by ", round((1 - new_size / old_size) * 100, 2), "%")
-        print("Reduced size by ", round((old_size - new_size) / 1000000, 2), "mbs")
+        print("Reduced size by ", format_size(old_size - new_size))
     print("Time taken:", round(time.time() - start_time, 2), "seconds")
     print("="*60)
     return old_size - new_size, replace_count
