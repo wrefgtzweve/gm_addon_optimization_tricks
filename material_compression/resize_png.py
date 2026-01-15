@@ -21,20 +21,24 @@ def clamp_pngs(folder, max_size, progress_callback=None):
         total_files += 1
         original_size = os.path.getsize(filepath)
         total_size += original_size
-        image = Image.open(filepath)
-        w, h = image.size
-        if w > max_size or h > max_size:
-            maxd = max(w, h)
-            scale = max_size / maxd
-            neww = int(w * scale)
-            newh = int(h * scale)
-            image = image.resize((neww, newh), resample=Image.Resampling.LANCZOS)
-            image.save(filepath, quality=95)
-            total_resized += os.path.getsize(filepath)
-            total_resized_files += 1
-            print(f"Resized {filepath} from {w}x{h} to {neww}x{newh}")
-        else:
-            total_resized += original_size
+
+        try:
+            image = Image.open(filepath)
+            w, h = image.size
+            if w > max_size or h > max_size:
+                maxd = max(w, h)
+                scale = max_size / maxd
+                neww = int(w * scale)
+                newh = int(h * scale)
+                image = image.resize((neww, newh), resample=Image.Resampling.LANCZOS)
+                image.save(filepath, quality=95)
+                total_resized += os.path.getsize(filepath)
+                total_resized_files += 1
+                print(f"Resized {filepath} from {w}x{h} to {neww}x{newh}")
+            else:
+                total_resized += original_size
+        except Exception as e:
+            print(f"Error processing {filepath}: {e}")
         
         if progress_callback:
             processed += 1
