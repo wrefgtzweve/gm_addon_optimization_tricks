@@ -111,28 +111,28 @@ def trim_empty_audio(folder, silence_thresh=-55, min_silence_len=50, fade_durati
     for idx, file_path in enumerate(audio_files):
         if progress_callback:
             progress_callback(idx + 1, total_files)
+        
+        try:
+            # Get original file size
+            old_file_size = os.path.getsize(file_path)
+            old_size += old_file_size
             
-            try:
-                # Get original file size
-                old_file_size = os.path.getsize(file_path)
-                old_size += old_file_size
-                
-                # Process the file
-                success, message, bytes_saved = trim_single_audio_file(file_path, silence_thresh, min_silence_len, fade_duration)
-                processed_count += 1
-                
-                if success:
-                    success_count += 1
-                    new_file_size = os.path.getsize(file_path)
-                    new_size += new_file_size
-                    saved_mb = bytes_saved / (1024 * 1024)
-                    print(f"✓ {file_path} - {message} (saved {saved_mb:.2f} MB)")
-                else:
-                    new_size += old_file_size  # No change in size
-                
-            except Exception as e:
-                print(f"✗ {file_path} - Error: {str(e)}")
+            # Process the file
+            success, message, bytes_saved = trim_single_audio_file(file_path, silence_thresh, min_silence_len, fade_duration)
+            processed_count += 1
+            
+            if success:
+                success_count += 1
+                new_file_size = os.path.getsize(file_path)
+                new_size += new_file_size
+                saved_mb = bytes_saved / (1024 * 1024)
+                print(f"✓ {file_path} - {message} (saved {saved_mb:.2f} MB)")
+            else:
                 new_size += old_file_size  # No change in size
+            
+        except Exception as e:
+            print(f"✗ {file_path} - Error: {str(e)}")
+            new_size += old_file_size  # No change in size
     
     # Print summary
     print("="*60)

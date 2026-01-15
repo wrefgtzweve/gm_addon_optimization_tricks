@@ -52,6 +52,9 @@ def wav_to_mp3(folder, progress_callback=None):
 
     # Optimized reference replacement: O(N+M) instead of O(N*M)
     if replaced_files:
+        # Build lowercased lookup for case-insensitive matching
+        lower_lookup = {k.lower(): v for k, v in replaced_files.items()}
+        
         # Build combined regex pattern for all replacements
         pattern = re.compile(
             '|'.join(re.escape(old) for old in replaced_files.keys()),
@@ -73,7 +76,7 @@ def wav_to_mp3(folder, progress_callback=None):
                 
                 # Single regex pass replaces all matches
                 new_contents = pattern.sub(
-                    lambda m: replaced_files.get(m.group(0), replaced_files.get(m.group(0).lower(), m.group(0))),
+                    lambda m: lower_lookup.get(m.group(0).lower(), m.group(0)),
                     contents
                 )
                 
