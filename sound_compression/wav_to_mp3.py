@@ -2,7 +2,7 @@ import pydub
 import os
 import re
 from wavinfo import WavInfoReader
-from utils.formatting import format_size
+from utils.formatting import format_size, format_percentage
 
 # Requires ffmpeg to be installed and added to PATH
 # https://github.com/jiaaro/pydub?tab=readme-ov-file#getting-ffmpeg-set-up
@@ -83,6 +83,6 @@ def wav_to_mp3(folder, progress_callback=None):
     if replace_count == 0:
         print("No files were replaced.")
     else:
-        print("Reduced size by ", round((1 - new_size / old_size) * 100, 2), "%")
+        print("Reduced size by ", format_percentage(old_size - new_size, old_size))
         print("Reduced size by ", format_size(old_size - new_size))
     print("="*60)

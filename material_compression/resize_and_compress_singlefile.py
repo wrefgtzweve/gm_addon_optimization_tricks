@@ -1,6 +1,6 @@
 import os
 from resizelib import cleanupVTF
-from utils.formatting import format_size
+from utils.formatting import format_size, format_percentage
 
 # Edit these variables
 PATH_TO_FILE = r"garrysmod\addons\addon_name\materials\material_name.vtf"
@@ -27,5 +27,5 @@ print("Clamped to", CLAMP_SIZE, "pixels.")
 if replace_count == 0:
     print("No files were replaced.")
 else:
-    print("Reduced size by ", round((1 - new_size / old_size) * 100, 2), "%")
+    print("Reduced size by ", format_percentage(old_size - new_size, old_size))
     print("Reduced size by ", format_size(old_size - new_size))

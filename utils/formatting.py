@@ -8,3 +8,9 @@ def format_size(size: int | float) -> str:
 
     mbs = size / 1_000_000
     return f"{round(mbs, 2)} MB"
+
+def format_percentage(part: int | float, whole: int | float) -> str:
+    if whole == 0:
+        return "0%"
+    percentage = (part / whole) * 100
+    return f"{round(percentage, 2)}%"
