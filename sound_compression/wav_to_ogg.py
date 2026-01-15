@@ -13,70 +13,76 @@ def wav_to_ogg(folder, progress_callback=None):
     new_size = 0
     replace_count = 0
 
-    # First pass: count WAV files
+    # Single pass: collect all WAV files
     wav_files = []
-    if progress_callback:
+    for path, subdirs, files in os.walk(folder):
+        for name in files:
+            if name.lower().endswith(".wav"):
+                wav_files.append(os.path.join(path, name))
+
+    total_wavs = len(wav_files)
+
+    # Process WAV files
+    for idx, filepath in enumerate(wav_files):
+        if progress_callback:
+            progress_callback(idx + 1, total_wavs)
+        
+        wav_info = WavInfoReader(filepath)
+        if wav_info.cues is not None and len(wav_info.cues.cues) > 0:
+            print("File", filepath, "contains cues, skipping.")
+            continue
+
+        if wav_info.smpl is not None and len(wav_info.smpl.sample_loops) > 0:
+            print("File", filepath, "contains loops, skipping.")
+            continue
+
+        old_size += os.path.getsize(filepath)
+        sound = pydub.AudioSegment.from_wav(filepath)
+
+        new_filepath = filepath.replace(".wav", ".ogg")
+        sound.export(new_filepath, format="ogg")
+        new_size += os.path.getsize(new_filepath)
+
+        file_name = os.path.basename(filepath)
+        replace_count += 1
+        replaced_files[file_name] = file_name.replace(".wav", ".ogg")
+        os.remove(filepath)
+
+        print("Converted", filepath, "to ogg successfully.")
+
+    # Optimized reference replacement: O(N+M) instead of O(N*M)
+    if replaced_files:
+        # Build combined regex pattern for all replacements
+        pattern = re.compile(
+            '|'.join(re.escape(old) for old in replaced_files.keys()),
+            flags=re.IGNORECASE
+        )
+        
+        # Collect text files in single pass
+        text_files = []
         for path, subdirs, files in os.walk(folder):
             for name in files:
-                if name.split(".")[-1] == "wav":
-                    wav_files.append(os.path.join(path, name))
-        total_wavs = len(wav_files)
-        processed = 0
-
-    for path, subdirs, files in os.walk(folder):
-        for name in files:
-            filepath = os.path.join(path, name)
-            filetype = name.split(".")[-1]
-            if filetype == "wav":
-                if progress_callback:
-                    processed += 1
-                    progress_callback(processed, total_wavs)
-                
-                wav_info = WavInfoReader(filepath)
-                if wav_info.cues != None and len(wav_info.cues.cues) > 0:
-                    print("File", filepath, "contains cues skipping.")
-                    continue
-
-                if wav_info.smpl != None and len(wav_info.smpl.sample_loops) > 0:
-                    print("File", filepath, "contains loops skipping.")
-                    continue
-
-                old_size += os.path.getsize(filepath)
-                sound = pydub.AudioSegment.from_wav(filepath)
-
-                new_filepath = filepath.replace(".wav", ".ogg")
-                sound.export(new_filepath, format="ogg")
-                new_size += os.path.getsize(new_filepath)
-
-                file_name = os.path.basename(filepath)
-                replace_count += 1
-                replaced_files[file_name] = file_name.replace(".wav", ".ogg")
-                os.remove(filepath)
-
-                print("Converted", filepath, "to ogg successfully.")
-
-    for path, subdirs, files in os.walk(folder):
-        for name in files:
-            filepath = os.path.join(path, name)
-            filetype = name.split(".")[-1]
-            if filetype == "lua" or filetype == "txt" or filetype == "json":
+                if name.lower().endswith((".lua", ".txt", ".json")):
+                    text_files.append(os.path.join(path, name))
+        
+        # Process each text file once with all replacements
+        for filepath in text_files:
+            try:
                 with open(filepath, "r", encoding="utf-8") as f:
                     contents = f.read()
                 
-                replaced = False
-                for old, new in replaced_files.items():
-                    pattern = re.escape(old)
-                    new_contents = re.sub(pattern, new, contents, flags=re.IGNORECASE)
-                    if new_contents != contents:
-                        replaced = True
-                    contents = new_contents
-
-                if not replaced:
-                    continue
-
-                with open(filepath, "w", encoding="utf-8") as f:
-                    f.write(contents)
-                print("Replaced", filepath, "successfully.")
+                # Single regex pass replaces all matches
+                new_contents = pattern.sub(
+                    lambda m: replaced_files.get(m.group(0), replaced_files.get(m.group(0).lower(), m.group(0))),
+                    contents
+                )
+                
+                if new_contents != contents:
+                    with open(filepath, "w", encoding="utf-8") as f:
+                        f.write(new_contents)
+                    print("Replaced", filepath, "successfully.")
+            except Exception as e:
+                print(f"Error processing {filepath}: {e}")
 
     print("="*60)
     print("Replaced", replace_count, "files.")
@@ -87,3 +93,4 @@ def wav_to_ogg(folder, progress_callback=None):
         print("Reduced size by ", format_size(old_size - new_size))
     print("="*60)
     return old_size - new_size, replace_count
+

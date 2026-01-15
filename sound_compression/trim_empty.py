@@ -97,29 +97,20 @@ def trim_empty_audio(folder, silence_thresh=-55, min_silence_len=50, fade_durati
     print(f"Scanning for audio files in: {folder}")
     print("Trimming silence from end of audio files (WAV, MP3, OGG) with fade-out...")
     
-    # First pass: collect all audio files
+    # Single pass: collect all audio files
     audio_files = []
-    if progress_callback:
-        for root, dirs, files in os.walk(folder):
-            for filename in files:
-                file_ext = filename.lower()
-                if file_ext.endswith(".wav") or file_ext.endswith(".mp3") or file_ext.endswith(".ogg"):
-                    audio_files.append(os.path.join(root, filename))
-        total_files = len(audio_files)
-        current_file = 0
-    
-    # Process all audio files
     for root, dirs, files in os.walk(folder):
         for filename in files:
             file_ext = filename.lower()
-            if not (file_ext.endswith(".wav") or file_ext.endswith(".mp3") or file_ext.endswith(".ogg")):
-                continue
-                
-            file_path = os.path.join(root, filename)
-            
-            if progress_callback:
-                current_file += 1
-                progress_callback(current_file, total_files)
+            if file_ext.endswith(".wav") or file_ext.endswith(".mp3") or file_ext.endswith(".ogg"):
+                audio_files.append(os.path.join(root, filename))
+    
+    total_files = len(audio_files)
+    
+    # Process collected audio files
+    for idx, file_path in enumerate(audio_files):
+        if progress_callback:
+            progress_callback(idx + 1, total_files)
             
             try:
                 # Get original file size

@@ -9,33 +9,29 @@ def resize_and_compress(folder, size, progress_callback=None):
     replace_count = 0
     start_time = time.time()
 
-    # First pass: count total files
-    total_files = 0
-    if progress_callback:
-        for path, subdirs, files in os.walk(folder):
-            for name in files:
-                if name.endswith(".vtf"):
-                    total_files += 1
-        processed = 0
-
+    # Single pass: collect all VTF files
+    vtf_files = []
     for path, subdirs, files in os.walk(folder):
         for name in files:
-            if not name.endswith(".vtf"):
-                continue
+            if name.endswith(".vtf"):
+                vtf_files.append(os.path.join(path, name))
 
-            old_size_temp = os.path.getsize(os.path.join(path, name))
-            converted = cleanupVTF(os.path.join(path, name), size)
-            if converted:
-                replace_count += 1
-                new_size += os.path.getsize(os.path.join(path, name))
-                old_size += old_size_temp
-            else:
-                new_size += old_size_temp
-                old_size += old_size_temp
-            
-            if progress_callback:
-                processed += 1
-                progress_callback(processed, total_files)
+    total_files = len(vtf_files)
+
+    # Process collected files
+    for idx, file_path in enumerate(vtf_files):
+        old_size_temp = os.path.getsize(file_path)
+        converted = cleanupVTF(file_path, size)
+        if converted:
+            replace_count += 1
+            new_size += os.path.getsize(file_path)
+            old_size += old_size_temp
+        else:
+            new_size += old_size_temp
+            old_size += old_size_temp
+        
+        if progress_callback:
+            progress_callback(idx + 1, total_files)
 
     print("="*60)
     print("Replaced", replace_count, "files.")
@@ -48,3 +44,4 @@ def resize_and_compress(folder, size, progress_callback=None):
     print("Time taken:", round(time.time() - start_time, 2), "seconds")
     print("="*60)
     return old_size - new_size, replace_count
+

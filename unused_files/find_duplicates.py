@@ -5,26 +5,26 @@ from utils.formatting import format_size
 
 def find_duplicates(folder: str, remove: bool = False, progress_callback=None):
     hash_map = {}
-    total_files = 0
-    for root, dirs, files in os.walk(folder):
-        dirs[:] = [d for d in dirs if d != '.git']
-        total_files += len(files)
     
-    processed = 0
-    quick_hash_map = {}
+    # Single pass: collect all files (excluding .git)
+    all_files = []
     for root, dirs, files in os.walk(folder):
         dirs[:] = [d for d in dirs if d != '.git']
         for filename in files:
-            file_path = os.path.join(root, filename)
-            try:
-                quick_hash = calculate_quick_hash(file_path)
-                quick_hash_map.setdefault(quick_hash, []).append(file_path)
-            except (OSError, IOError) as e:
-                print(f"Error hashing {file_path}: {e}")
-            
-            processed += 1
-            if progress_callback:
-                progress_callback(processed, total_files)
+            all_files.append(os.path.join(root, filename))
+    
+    total_files = len(all_files)
+    quick_hash_map = {}
+    
+    for idx, file_path in enumerate(all_files):
+        try:
+            quick_hash = calculate_quick_hash(file_path)
+            quick_hash_map.setdefault(quick_hash, []).append(file_path)
+        except (OSError, IOError) as e:
+            print(f"Error hashing {file_path}: {e}")
+        
+        if progress_callback:
+            progress_callback(idx + 1, total_files)
     
     for quick_hash, file_paths in quick_hash_map.items():
         if len(file_paths) > 1:
