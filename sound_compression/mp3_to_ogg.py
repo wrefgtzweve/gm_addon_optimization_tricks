@@ -2,6 +2,7 @@ import pydub
 import pydub.exceptions
 import os
 import re
+from utils.formatting import format_size, format_percentage
 
 # Requires ffmpeg to be installed and added to PATH
 # https://github.com/jiaaro/pydub?tab=readme-ov-file#getting-ffmpeg-set-up
@@ -66,8 +67,7 @@ def mp3_to_ogg(folder):
     if replace_count == 0:
         print("No files were replaced.")
     else:
-        if old_size > 0:
-            print("Reduced size by ", round((1 - new_size / old_size) * 100, 2), "%")
-        print("Reduced size by ", round((old_size - new_size) / 1000000, 2), "mbs")
+        print("Reduced size by ", format_percentage(old_size - new_size, old_size))
+        print("Reduced size by ", format_size(old_size - new_size))
     print("="*60)
     return old_size - new_size, replace_count

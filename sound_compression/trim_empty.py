@@ -1,6 +1,7 @@
 import os
 import time
 from pydub import AudioSegment, silence
+from utils.formatting import format_size, format_percentage
 
 
 def trim_single_audio_file(input_file, silence_thresh=-55, min_silence_len=50, fade_duration=200):
@@ -150,10 +151,9 @@ def trim_empty_audio(folder, silence_thresh=-55, min_silence_len=50, fade_durati
     
     if success_count > 0:
         total_saved = old_size - new_size
-        percent_saved = (total_saved / old_size) * 100 if old_size > 0 else 0
         mb_saved = total_saved / (1024 * 1024)
         
-        print(f"Total size reduction: {mb_saved:.2f} MB ({percent_saved:.1f}%)")
+        print(f"Total size reduction: {mb_saved:.2f} MB ({format_percentage(total_saved, old_size)})")
         print(f"Average reduction per file: {mb_saved/success_count:.2f} MB")
     else:
         print("No files were modified.")

@@ -1,6 +1,7 @@
 import os
 import xxhash
 from utils.vpk import get_vpk_files
+from utils.formatting import format_size
 
 def remove_game_files(folder, gamefolder, remove=True, remove_different_content=False):
     """
@@ -97,7 +98,7 @@ def remove_game_files(folder, gamefolder, remove=True, remove_different_content=
     if removed_count == 0:
         print("No game files were found in the addon folder.")
     else:
-        print(f"Freed up {round(removed_size / 1000000, 2)} MB of space")
+        print(f"Freed up {format_size(removed_size)} of space")
     print("="*60)
     return removed_size, removed_count
 

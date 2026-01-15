@@ -6,7 +6,7 @@ import signal
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from utils.formatting import format_size
+from utils.formatting import format_size, format_percentage
 from unused_files.modelformats import unused_model_formats
 from unused_files.content import unused_content
 from unused_files.remove_game_files import remove_game_files
@@ -377,14 +377,14 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             diff = self.initial_folder_size - self.current_folder_size
             diff_str = format_size(diff)
-            percentage = (diff / self.initial_folder_size * 100) if self.initial_folder_size > 0 else 0
+            percentage = format_percentage(diff, self.initial_folder_size)
             
             if diff > 0:
                 # Size reduced
                 self.size_label.setText(
                     f"Folder size: <span style='color: #888;'>{initial_str}</span> → "
                     f"<b>{current_str}</b> "
-                    f"<span style='color: #4CAF50;'>(−{diff_str}, −{percentage:.2f}%)</span>"
+                    f"<span style='color: #4CAF50;'>(−{diff_str}, −{percentage})</span>"
                 )
             else:
                 # Size increased (shouldn't happen normally)

@@ -2,6 +2,7 @@ import pydub
 import os
 import re
 from wavinfo import WavInfoReader
+from utils.formatting import format_size, format_percentage
 
 # Requires ffmpeg to be installed and added to PATH
 # https://github.com/jiaaro/pydub?tab=readme-ov-file#getting-ffmpeg-set-up
@@ -32,15 +33,12 @@ def wav_to_ogg(folder, progress_callback=None):
                     progress_callback(processed, total_wavs)
                 
                 wav_info = WavInfoReader(filepath)
-                
-                # Skip files WITH cue markers (they need cues preserved)
-                if wav_info.cues is not None and len(wav_info.cues.cues) > 0:
-                    print("File", filepath, "contains cues, skipping.")
+                if wav_info.cues != None and len(wav_info.cues.cues) > 0:
+                    print("File", filepath, "contains cues skipping.")
                     continue
 
-                # Skip files WITH loop points (they need loops preserved)
-                if wav_info.smpl is not None and len(wav_info.smpl.sample_loops) > 0:
-                    print("File", filepath, "contains loops, skipping.")
+                if wav_info.smpl != None and len(wav_info.smpl.sample_loops) > 0:
+                    print("File", filepath, "contains loops skipping.")
                     continue
 
                 old_size += os.path.getsize(filepath)
@@ -85,8 +83,7 @@ def wav_to_ogg(folder, progress_callback=None):
     if replace_count == 0:
         print("No files were replaced.")
     else:
-        if old_size > 0:
-            print("Reduced size by ", round((1 - new_size / old_size) * 100, 2), "%")
-        print("Reduced size by ", round((old_size - new_size) / 1000000, 2), "mbs")
+        print("Reduced size by ", format_percentage(old_size - new_size, old_size))
+        print("Reduced size by ", format_size(old_size - new_size))
     print("="*60)
     return old_size - new_size, replace_count

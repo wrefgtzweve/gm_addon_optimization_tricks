@@ -19,9 +19,10 @@ def clamp_pngs(folder, max_size, progress_callback=None):
 
     for filepath in png_files:
         total_files += 1
+        original_size = os.path.getsize(filepath)
+        total_size += original_size
+
         try:
-            original_size = os.path.getsize(filepath)
-            total_size += original_size
             image = Image.open(filepath)
             w, h = image.size
             if w > max_size or h > max_size:
@@ -38,7 +39,6 @@ def clamp_pngs(folder, max_size, progress_callback=None):
                 total_resized += original_size
         except Exception as e:
             print(f"Error processing {filepath}: {e}")
-            total_resized += original_size if 'original_size' in dir() else 0
         
         if progress_callback:
             processed += 1
