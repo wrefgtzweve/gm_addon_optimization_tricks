@@ -55,22 +55,17 @@ class TaskWorker(QtCore.QObject):
     finished = QtCore.Signal(str)
     failed = QtCore.Signal(str)
 
-    def __init__(self, fn, *args, description: str = "Working...", inject_progress: bool = False, **kwargs):
+    def __init__(self, fn, *args, description: str = "Working...", **kwargs):
         super().__init__()
         self.fn = fn
         self.args = args
         self.kwargs = kwargs
         self.description = description
-        self.inject_progress = inject_progress
 
     @QtCore.Slot()
     def run(self):
         self.started.emit(self.description)
         try:
-            # Inject progress callback if requested
-            if self.inject_progress:
-                self.kwargs['progress_callback'] = self.progress.emit
-            
             with redirect_stdout_stderr(self.log.emit):
                 result = self.fn(*self.args, **self.kwargs)
             msg = "Done."
@@ -88,16 +83,6 @@ class TaskWorker(QtCore.QObject):
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    # Task groups - tasks in same group cannot run concurrently
-    TASK_GROUPS = {
-        'textures': ['clamp_vtf', 'use_dxt', 'remove_mipmaps', 'resize_single_color', 'resave_vtf'],
-        'models': ['unused_model_formats'],
-        'sounds': ['wav_to_ogg', 'wav_to_mp3', 'mp3_to_ogg', 'trim_empty'],
-        'cleanup': ['unused_content', 'remove_game_files', 'find_duplicates'],
-        'mapping': ['find_map_content'],
-        'images': ['clamp_png'],
-    }
-    
     def __init__(self):
         super().__init__()
         self.setWindowTitle("GM Addon Optimization Tools")
@@ -108,8 +93,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if os.path.exists(icon_path):
             self.setWindowIcon(QtGui.QIcon(icon_path))
 
-        # Multi-task tracking: {task_id: (thread, worker, group)}
-        self.active_tasks: dict = {}
+        self.thread: QtCore.QThread | None = None
+        self.worker: TaskWorker | None = None
         self.initial_folder_size: int = 0
         self.current_folder_size: int = 0
         
@@ -301,33 +286,10 @@ class MainWindow(QtWidgets.QMainWindow):
         path = QtWidgets.QFileDialog.getExistingDirectory(self, title)
         return path or None
 
-    def get_task_group(self, task_id: str) -> str | None:
-        """Get the group a task belongs to"""
-        for group, tasks in self.TASK_GROUPS.items():
-            if task_id in tasks:
-                return group
-        return None
-
-    def get_running_group_tasks(self, group: str) -> list:
-        """Get list of running tasks in a specific group"""
-        return [tid for tid, (_, _, g) in self.active_tasks.items() if g == group]
-
-    def start_task(self, description: str, fn, *args, task_id: str = None, determinate: bool = False, inject_progress: bool = False, **kwargs):
-        # Generate task_id from description if not provided
-        if task_id is None:
-            task_id = description.lower().replace(" ", "_").replace("/", "_")
-        
-        # Check if this task's group has a running task
-        task_group = self.get_task_group(task_id)
-        if task_group:
-            running = self.get_running_group_tasks(task_group)
-            if running:
-                QtWidgets.QMessageBox.information(
-                    self, "Busy", 
-                    f"A {task_group} task is already running ({running[0]}). Please wait for it to finish."
-                )
-                return
-        
+    def start_task(self, description: str, fn, *args, determinate: bool = False, **kwargs):
+        if self.thread is not None:
+            QtWidgets.QMessageBox.information(self, "Busy", "A task is already running. Please wait for it to finish.")
+            return
         self.progress.setVisible(True)
         if determinate:
             self.progress.setRange(0, 100)
@@ -336,47 +298,41 @@ class MainWindow(QtWidgets.QMainWindow):
             self.progress.setRange(0, 0)
         self.log_append(f"Starting: {description}\n")
 
-        thread = QtCore.QThread()
-        worker = TaskWorker(fn, *args, description=description, inject_progress=inject_progress, **kwargs)
-        worker.moveToThread(thread)
+        self.thread = QtCore.QThread()
+        self.worker = TaskWorker(fn, *args, description=description, **kwargs)
+        self.worker.moveToThread(self.thread)
 
-        # Store task info
-        self.active_tasks[task_id] = (thread, worker, task_group)
+        self.thread.started.connect(self.worker.run)
+        self.worker.started.connect(lambda msg: None)
+        self.worker.log.connect(self.log_append)
+        self.worker.progress.connect(self.on_progress_update)
+        self.worker.finished.connect(self.on_task_finished)
+        self.worker.failed.connect(self.on_task_failed)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.failed.connect(self.thread.quit)
+        self.thread.finished.connect(self.cleanup_thread)
 
-        thread.started.connect(worker.run)
-        worker.started.connect(lambda msg: None)
-        worker.log.connect(self.log_append)
-        worker.progress.connect(self.on_progress_update)
-        worker.finished.connect(lambda msg: self.on_task_finished(msg, task_id))
-        worker.failed.connect(lambda msg: self.on_task_failed(msg, task_id))
-        worker.finished.connect(thread.quit)
-        worker.failed.connect(thread.quit)
-        thread.finished.connect(lambda: self.cleanup_task(task_id))
+        self.thread.start()
 
-        thread.start()
-
-    def cleanup_task(self, task_id: str):
-        """Clean up a specific completed task"""
-        if task_id in self.active_tasks:
-            del self.active_tasks[task_id]
-        # Hide progress bar only when all tasks are done
-        if not self.active_tasks:
-            self.progress.setVisible(False)
+    def cleanup_thread(self):
+        self.thread = None
+        self.worker = None
+        self.progress.setVisible(False)
 
     def on_progress_update(self, current: int, total: int):
         """Update progress bar with current/total values"""
-        if len(self.active_tasks) > 1:
-            self.progress.setVisible(False)
-            return
         if total > 0:
             self.progress.setRange(0, total)
             self.progress.setValue(current)
+        else:
+            # If total is 0, use indeterminate mode
+            self.progress.setRange(0, 0)
 
-    def on_task_finished(self, msg: str, task_id: str = None):
+    def on_task_finished(self, msg: str):
         self.log_append(msg + "\n")
         self.update_folder_size()
 
-    def on_task_failed(self, msg: str, task_id: str = None):
+    def on_task_failed(self, msg: str):
         self.log_append(msg + "\n")
         self.update_folder_size()
         QtWidgets.QMessageBox.critical(self, "Task failed", msg)
@@ -458,8 +414,12 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         remove = self.ask_yes_no("Remove models?", "Do you want to remove the unused model formats?")
 
-        self.start_task("Unused model formats", unused_model_formats, folder, remove, 
-                         task_id="unused_model_formats", determinate=True, inject_progress=True)
+        def task():
+            size, count = unused_model_formats(folder, remove, progress_callback=self.worker.progress.emit)
+            print((f"Removed {count} unused model formats, saving {format_size(size)}") if remove else (f"Found {count} unused model formats, taking up {format_size(size)}"))
+            return size, count
+
+        self.start_task("Unused model formats", task, determinate=True)
 
     def on_unused_content(self):
         folder = self.ensure_folder()
@@ -477,7 +437,7 @@ class MainWindow(QtWidgets.QMainWindow):
             print((f"Removed {count} unused files, saving {format_size(size)}") if remove else (f"Found {count} unused files, taking up {format_size(size)}"))
             return size, count
 
-        self.start_task("Find unused content", task, task_id="unused_content")
+        self.start_task("Find unused content", task)
 
     def on_remove_game_files(self):
         folder = self.ensure_folder()
@@ -490,7 +450,7 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, "Invalid game folder", "The selected folder doesn't contain gmod.exe")
             return
 
-        self.start_task("Remove files already in game", remove_game_files, folder, gamefolder, remove, remove_different_content, task_id="remove_game_files")
+        self.start_task("Remove files already in game", remove_game_files, folder, gamefolder, remove, remove_different_content)
 
     def on_clamp_vtf(self):
         folder = self.ensure_folder()
@@ -500,8 +460,10 @@ class MainWindow(QtWidgets.QMainWindow):
         if size is None:
             return
         
-        self.start_task("Clamp VTF file sizes", resize_and_compress, folder, int(size),
-                         task_id="clamp_vtf", determinate=True, inject_progress=True)
+        def task():
+            return resize_and_compress(folder, int(size), progress_callback=self.worker.progress.emit)
+        
+        self.start_task("Clamp VTF file sizes", task, determinate=True)
 
     def on_use_dxt(self):
         folder = self.ensure_folder()
@@ -509,16 +471,20 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         # Use a very large clamp to force DXT path
         
-        self.start_task("Use DXT for VTFs", resize_and_compress, folder, 1_000_000,
-                         task_id="use_dxt", determinate=True, inject_progress=True)
+        def task():
+            return resize_and_compress(folder, 1_000_000, progress_callback=self.worker.progress.emit)
+        
+        self.start_task("Use DXT for VTFs", task, determinate=True)
 
     def on_remove_mipmaps(self):
         folder = self.ensure_folder()
         if not folder:
             return
         
-        self.start_task("Remove mipmaps", remove_mipmaps, folder,
-                         task_id="remove_mipmaps", determinate=True, inject_progress=True)
+        def task():
+            return remove_mipmaps(folder, progress_callback=self.worker.progress.emit)
+        
+        self.start_task("Remove mipmaps", task, determinate=True)
 
     def on_clamp_png(self):
         folder = self.ensure_folder()
@@ -528,39 +494,46 @@ class MainWindow(QtWidgets.QMainWindow):
         if size is None:
             return
         
-        self.start_task("Clamp PNG file sizes", clamp_pngs, folder, int(size),
-                         task_id="clamp_png", determinate=True, inject_progress=True)
+        def task():
+            return clamp_pngs(folder, int(size), progress_callback=self.worker.progress.emit)
+        
+        self.start_task("Clamp PNG file sizes", task, determinate=True)
 
     def on_wav_to_mp3(self):
         folder = self.ensure_folder()
         if not folder:
             return
         
-        self.start_task(".wav to .mp3", wav_to_mp3, folder,
-                         task_id="wav_to_mp3", determinate=True, inject_progress=True)
+        def task():
+            return wav_to_mp3(folder, progress_callback=self.worker.progress.emit)
+        
+        self.start_task(".wav to .mp3", task, determinate=True)
 
     def on_wav_to_ogg(self):
         folder = self.ensure_folder()
         if not folder:
             return
         
-        self.start_task(".wav to .ogg", wav_to_ogg, folder,
-                         task_id="wav_to_ogg", determinate=True, inject_progress=True)
+        def task():
+            return wav_to_ogg(folder, progress_callback=self.worker.progress.emit)
+        
+        self.start_task(".wav to .ogg", task, determinate=True)
 
     def on_mp3_to_ogg(self):
         folder = self.ensure_folder()
         if not folder:
             return
-        self.start_task(".mp3 to .ogg", mp3_to_ogg, folder,
-                         task_id="mp3_to_ogg", determinate=True, inject_progress=True)
+        self.start_task(".mp3 to .ogg", mp3_to_ogg, folder)
 
     def on_trim_empty_audio(self):
         folder = self.ensure_folder()
         if not folder:
             return
         
-        self.start_task("Trim empty audio", trim_empty_audio, folder,
-                         task_id="trim_empty", determinate=True, inject_progress=True)
+        def task():
+            return trim_empty_audio(folder, progress_callback=self.worker.progress.emit)
+        
+        self.start_task("Trim empty audio", task, determinate=True)
 
     def on_find_map_content(self):
         folder = self.ensure_folder()
@@ -580,8 +553,7 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, "Invalid destination", "Please select a destination folder.")
             return
         os.makedirs(dest_folder, exist_ok=True)
-        self.start_task("Find/copy content used by map", find_map_content, folder, gamefolder, dest_folder, map_file,
-                         task_id="find_map_content")
+        self.start_task("Find/copy content used by map", find_map_content, folder, gamefolder, dest_folder, map_file)
 
     def on_resave_vtf(self):
         folder = self.ensure_folder()
@@ -606,15 +578,17 @@ class MainWindow(QtWidgets.QMainWindow):
             print(f"Resaved {count} VTF files.")
             return 0, count
 
-        self.start_task("Resave VTF files", task, task_id="resave_vtf")
+        self.start_task("Resave VTF files", task)
 
     def on_resize_single_color(self):
         folder = self.ensure_folder()
         if not folder:
             return
         
-        self.start_task("Resize single-color images", resize_single_color_images, folder,
-                         task_id="resize_single_color", determinate=True, inject_progress=True)
+        def task():
+            return resize_single_color_images(folder, progress_callback=self.worker.progress.emit)
+        
+        self.start_task("Resize single-color images", task, determinate=True)
 
     def on_find_duplicates(self):
         folder = self.ensure_folder()
@@ -622,8 +596,10 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         remove = self.ask_yes_no("Remove duplicates?", "Do you want to remove the found duplicate files? The first occurrence of each duplicate will be kept.")
 
-        self.start_task("Find duplicate files", find_duplicates, folder, remove,
-                         task_id="find_duplicates", determinate=True, inject_progress=True)
+        def task():
+            return find_duplicates(folder, remove, progress_callback=self.worker.progress.emit)
+
+        self.start_task("Find duplicate files", task, determinate=True)
 
 
 def main():

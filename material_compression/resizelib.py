@@ -32,31 +32,6 @@ def cleanupVTF(path: str, max_size: int = 9999) -> bool:
         print(f"✗ {path} - failed to load VTF: {e}")
         return False
 
-    if vtf.frame_count > 1:
-        if vtf.format in (vtfpp.ImageFormat.DXT1, vtfpp.ImageFormat.DXT5):
-            print("Skipping resize for animated VTF:", path)
-            return False
-        try:
-            image_data = vtf.get_image_data_as_rgba8888(0)
-            image = Image.frombytes("RGBA", (vtf.width, vtf.height), image_data)
-            _, _, _, a = image.split()
-            best_format = vtfpp.ImageFormat.DXT5 if a.getextrema()[0] < 255 else vtfpp.ImageFormat.DXT1
-            if vtf.format != best_format:
-                vtf.set_format(best_format)
-                vtf.bake_to_file(path)
-                print("Skipping resize for animated VTF:", path)
-                return True
-        except Exception:
-            pass
-        print("Skipping resize for animated VTF:", path)
-        return False
-
-    needs_resize = vtf.width > max_size or vtf.height > max_size
-    already_dxt = vtf.format in (vtfpp.ImageFormat.DXT1, vtfpp.ImageFormat.DXT5)
-    
-    if not needs_resize and already_dxt:
-        return False
-
     try:
         image_data = vtf.get_image_data_as_rgba8888(0)
         image = Image.frombytes("RGBA", (vtf.width, vtf.height), image_data)
@@ -75,7 +50,14 @@ def cleanupVTF(path: str, max_size: int = 9999) -> bool:
         vtf.set_format(best_format)
         format_changed = True
 
-    if needs_resize:
+    if vtf.frame_count > 1:
+        print("Skipping resize for animated VTF:", path)
+        if format_changed:
+            vtf.bake_to_file(path)
+            return True
+        return False
+
+    if vtf.width > max_size or vtf.height > max_size:
         return resizeVTFImage(vtf, path, max_size, best_format)
 
     if format_changed:
