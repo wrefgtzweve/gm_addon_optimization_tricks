@@ -15,9 +15,11 @@ def resizeVTFImage(vtf: vtfpp.VTF, path: str, max_size: int = 1024, best_format:
         newh *= scale
 
     if scale != 1:
-        vtf.set_size(int(neww), int(newh), vtfpp.ImageConversion.ResizeFilter.NICE)
+        neww_int = int(neww)
+        newh_int = int(newh)
+        vtf.set_size(neww_int, newh_int, vtfpp.ImageConversion.ResizeFilter.NICE)
         vtf.bake_to_file(path)
-        print(f"✓ {path} - resized from {w}x{h} to {int(neww)}x{int(newh)}")
+        print(f"✓ {path} - resized from {w}x{h} to {neww_int}x{newh_int}")
         return True
     return False
 
