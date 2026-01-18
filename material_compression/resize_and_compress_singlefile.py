@@ -24,8 +24,8 @@ if filetype == "vtf":
     new_size = os.path.getsize(PATH_TO_FILE)
 
 print("Clamped to", CLAMP_SIZE, "pixels.")
-if replace_count == 0:
-    print("No files were replaced.")
-else:
+if old_size > 0 and new_size > 0:
     print("Reduced size by ", format_percentage(old_size - new_size, old_size))
     print("Reduced size by ", format_size(old_size - new_size))
+else:
+    print("No changes made.")
