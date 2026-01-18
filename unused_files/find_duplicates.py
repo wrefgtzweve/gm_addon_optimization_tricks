@@ -95,8 +95,8 @@ def calculate_quick_hash(file_path: str) -> str:
     return hasher.hexdigest()
 
 
-def calculate_file_hash(file_path: str, chunk_size: int = 524288) -> str:
-    """Full file hash using xxHash with 512KB chunks."""
+def calculate_file_hash(file_path: str, chunk_size: int = 131072) -> str:
+    """Full file hash using xxHash with 128KB chunks."""
     hasher = xxhash.xxh64()
     with open(file_path, "rb") as f:
         while chunk := f.read(chunk_size):
