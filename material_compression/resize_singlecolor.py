@@ -52,11 +52,11 @@ def resize_single_color_images(folder, progress_callback=None):
                     if is_single_color(image):
                         original_width = vtf.width
                         original_height = vtf.height
-                        if original_width == 4 and original_height == 4:
+                        if original_width == 8 and original_height == 8:
                             total_resized += original_size
                             continue
 
-                        vtf.set_size(4, 4, vtfpp.ImageConversion.ResizeFilter.NICE)
+                        vtf.set_size(8, 8, vtfpp.ImageConversion.ResizeFilter.NICE)
                         vtf.bake_to_file(filepath)
 
                         new_size = os.path.getsize(filepath)

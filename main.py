@@ -162,8 +162,8 @@ class MainWindow(QtWidgets.QMainWindow):
                    tooltip="Resize PNG images to a maximum size.\nReduces file size for UI elements and other PNG assets.\nUsually PNG's don't need to be very large as they are often used for icons or UI elements.")
         add_button(textures_grid, 4, "Resave VTF files (autorefresh)", self.on_resave_vtf,
                    tooltip="Resave all VTF files to force the game to refresh cached textures.")
-        add_button(textures_grid, 5, "Resize single-color VTFs to 4x4", self.on_resize_single_color, recommended=True,
-                   tooltip="Find and resize all single-color VTFs to 4x4 pixels. Greatly reduces file size for solid color textures.")
+        add_button(textures_grid, 5, "Resize single-color VTFs", self.on_resize_single_color, recommended=True,
+                   tooltip="Find and resize all single-color VTFs. Greatly reduces file size for solid color textures.")
         textures_group.setLayout(textures_grid)
         actions_layout.addWidget(textures_group)
 
