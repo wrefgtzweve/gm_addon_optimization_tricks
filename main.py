@@ -97,6 +97,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.worker: TaskWorker | None = None
         self.initial_folder_size: int = 0
         self.current_folder_size: int = 0
+        
+        # Settings for persistence
+        self.settings = QtCore.QSettings("GMAddonOptimization", "Tools")
 
         central = QtWidgets.QWidget()
         self.setCentralWidget(central)
@@ -113,6 +116,13 @@ class MainWindow(QtWidgets.QMainWindow):
         folder_row.addWidget(self.folder_edit, 1)
         folder_row.addWidget(browse_btn)
         main_layout.addLayout(folder_row)
+        
+        # Restore last used folder
+        last_folder = self.settings.value("last_folder", "")
+        if last_folder and os.path.exists(last_folder):
+            self.folder_edit.setText(last_folder)
+            # Calculate size in background after UI loads
+            QtCore.QTimer.singleShot(100, lambda: self.calculate_initial_folder_size(last_folder))
 
         # Folder size counter
         size_row = QtWidgets.QHBoxLayout()
@@ -174,8 +184,8 @@ class MainWindow(QtWidgets.QMainWindow):
         cleanup_grid.setVerticalSpacing(8)
         add_button(cleanup_grid, 0, "Unused model formats (scan/remove)", self.on_unused_model_formats, recommended=True,
                    tooltip="Find and remove unused model format files (.phy, .vvd, .dx80.vtx, .dx90.vtx, .sw.vtx) that are unused in garry's mod.")
-        add_button(cleanup_grid, 1, "Find unused content (WIP)", self.on_unused_content, recommended=True,
-                   tooltip="Scan for content files that aren't referenced anywhere. WARNING: This may remove files that are actually used as it's still WIP!")
+        add_button(cleanup_grid, 1, "Find unused content (WIP)", self.on_unused_content, recommended=False,
+                   tooltip="⚠️ EXPERIMENTAL - May delete files that ARE used!\n\nThis feature only checks for model paths in .lua files.\nIt will miss: dynamic paths, .txt/.json references,\nspawnmenu entities, and model bodygroups.\n\nRecommended: Use 'scan only' mode first to review.")
         add_button(cleanup_grid, 2, "Remove files already in game (HL2/CSS)", self.on_remove_game_files, recommended=True,
                    tooltip="Remove files that are already provided by base GMod.\nCan reduce size significantly for addons that include EP1/EP2/CSS content.")
         add_button(cleanup_grid, 3, "Find and copy content used by .bsp", self.on_find_map_content,
@@ -257,6 +267,7 @@ class MainWindow(QtWidgets.QMainWindow):
         folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select content folder")
         if folder:
             self.folder_edit.setText(folder)
+            self.settings.setValue("last_folder", folder)
             self.calculate_initial_folder_size(folder)
 
     def ask_int(self, title: str, label: str, default: int = 1024) -> int | None:
@@ -414,7 +425,12 @@ class MainWindow(QtWidgets.QMainWindow):
         folder = self.ensure_folder()
         if not folder:
             return
-        remove = self.ask_yes_no("Remove files?", "Do you want to remove the found unused files? This isn't 100% and can remove used files!")
+        remove = self.ask_yes_no("⚠️ EXPERIMENTAL FEATURE", 
+            "This feature is EXPERIMENTAL and may incorrectly identify used files as unused.\n\n"
+            "It only checks .lua files for exact model path matches.\n"
+            "Files referenced dynamically, in .txt/.json, or via spawnmenu WILL BE MISSED.\n\n"
+            "Do you want to REMOVE the found files?\n"
+            "(Choose 'No' to scan only without deleting)")
 
         def task():
             size, count = unused_content(folder, remove)

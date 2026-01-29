@@ -97,51 +97,42 @@ def trim_empty_audio(folder, silence_thresh=-55, min_silence_len=50, fade_durati
     print(f"Scanning for audio files in: {folder}")
     print("Trimming silence from end of audio files (WAV, MP3, OGG) with fade-out...")
     
-    # First pass: collect all audio files
+    # Single pass: collect all audio files
     audio_files = []
-    if progress_callback:
-        for root, dirs, files in os.walk(folder):
-            for filename in files:
-                file_ext = filename.lower()
-                if file_ext.endswith(".wav") or file_ext.endswith(".mp3") or file_ext.endswith(".ogg"):
-                    audio_files.append(os.path.join(root, filename))
-        total_files = len(audio_files)
-        current_file = 0
-    
-    # Process all audio files
     for root, dirs, files in os.walk(folder):
         for filename in files:
             file_ext = filename.lower()
-            if not (file_ext.endswith(".wav") or file_ext.endswith(".mp3") or file_ext.endswith(".ogg")):
-                continue
-                
-            file_path = os.path.join(root, filename)
+            if file_ext.endswith(".wav") or file_ext.endswith(".mp3") or file_ext.endswith(".ogg"):
+                audio_files.append(os.path.join(root, filename))
+    
+    total_files = len(audio_files)
+    
+    # Process collected audio files
+    for idx, file_path in enumerate(audio_files):
+        if progress_callback:
+            progress_callback(idx + 1, total_files)
+        
+        try:
+            # Get original file size
+            old_file_size = os.path.getsize(file_path)
+            old_size += old_file_size
             
-            if progress_callback:
-                current_file += 1
-                progress_callback(current_file, total_files)
+            # Process the file
+            success, message, bytes_saved = trim_single_audio_file(file_path, silence_thresh, min_silence_len, fade_duration)
+            processed_count += 1
             
-            try:
-                # Get original file size
-                old_file_size = os.path.getsize(file_path)
-                old_size += old_file_size
-                
-                # Process the file
-                success, message, bytes_saved = trim_single_audio_file(file_path, silence_thresh, min_silence_len, fade_duration)
-                processed_count += 1
-                
-                if success:
-                    success_count += 1
-                    new_file_size = os.path.getsize(file_path)
-                    new_size += new_file_size
-                    saved_mb = bytes_saved / (1024 * 1024)
-                    print(f"✓ {file_path} - {message} (saved {saved_mb:.2f} MB)")
-                else:
-                    new_size += old_file_size  # No change in size
-                
-            except Exception as e:
-                print(f"✗ {file_path} - Error: {str(e)}")
+            if success:
+                success_count += 1
+                new_file_size = os.path.getsize(file_path)
+                new_size += new_file_size
+                saved_mb = bytes_saved / (1024 * 1024)
+                print(f"✓ {file_path} - {message} (saved {saved_mb:.2f} MB)")
+            else:
                 new_size += old_file_size  # No change in size
+            
+        except Exception as e:
+            print(f"✗ {file_path} - Error: {str(e)}")
+            new_size += old_file_size  # No change in size
     
     # Print summary
     print("="*60)
@@ -160,3 +151,4 @@ def trim_empty_audio(folder, silence_thresh=-55, min_silence_len=50, fade_durati
     
     print(f"Time taken: {round(time.time() - start_time, 2)} seconds")
     print("="*60)
+    return old_size - new_size, success_count

@@ -1,9 +1,9 @@
 import glob
-from typing import List, Set
+from typing import Set, List
 import sourcepp
 import os
 
-def get_vpk_files(gamefolder: str) -> Set[str]:
+def get_vpk_files(gamefolder: str) -> dict:
     """
     Get all file paths from VPK files in the game folder.
 

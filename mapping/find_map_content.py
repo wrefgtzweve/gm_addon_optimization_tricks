@@ -65,6 +65,7 @@ def find_map_content(all_content_folder: str, gamefolder:str, new_content_folder
 
     # Copy the required files to the new content folder
     total_size = 0
+    copied_count = 0
     map_base = os.path.splitext(os.path.basename(map_file))[0]
     for file_rel_path in required_files:
         # Normalize the relative path to use correct separators
@@ -98,9 +99,12 @@ def find_map_content(all_content_folder: str, gamefolder:str, new_content_folder
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
             shutil.copy2(src_path, dest_path)
             total_size += os.path.getsize(dest_path)
+            copied_count += 1
         else:
             print(f"Warning: Required file not found: {norm_rel_path}")
     
     print("="*60)
-    print(f"Content copying complete. Total size: {total_size / (1024*1024):.2f} MB Total files copied: {len(required_files)}")
+    print(f"Content copying complete. Total size: {total_size / (1024*1024):.2f} MB Total files copied: {copied_count}")
     print(f"Files copied to: {new_content_folder}")
+    return total_size, copied_count
+
