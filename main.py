@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 from contextlib import contextmanager
 from io import StringIO
 import signal
@@ -93,6 +94,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if os.path.exists(icon_path):
             self.setWindowIcon(QtGui.QIcon(icon_path))
 
+        self._config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
         self.thread: QtCore.QThread | None = None
         self.worker: TaskWorker | None = None
         self.initial_folder_size: int = 0
@@ -121,6 +123,13 @@ class MainWindow(QtWidgets.QMainWindow):
         size_row.addWidget(self.size_label)
         size_row.addStretch()
         main_layout.addLayout(size_row)
+
+        # Restore last folder
+        _cfg = self._load_config()
+        last_folder = _cfg.get("last_folder", "")
+        if last_folder and os.path.exists(last_folder):
+            self.folder_edit.setText(last_folder)
+            self.calculate_initial_folder_size(last_folder)
 
         # Legend
         legend_label = QtWidgets.QLabel("💡 <span style='color: #4CAF50;'>Green buttons</span> generally have no downsides and can always be used.")
@@ -253,10 +262,27 @@ class MainWindow(QtWidgets.QMainWindow):
             return None
         return folder
 
+    def _load_config(self) -> dict:
+        try:
+            with open(self._config_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+
+    def _save_config(self, data: dict):
+        try:
+            cfg = self._load_config()
+            cfg.update(data)
+            with open(self._config_path, "w", encoding="utf-8") as f:
+                json.dump(cfg, f, indent=2)
+        except Exception as e:
+            print(f"Failed to save config: {e}")
+
     def choose_folder(self):
         folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select content folder")
         if folder:
             self.folder_edit.setText(folder)
+            self._save_config({"last_folder": folder})
             self.calculate_initial_folder_size(folder)
 
     def ask_int(self, title: str, label: str, default: int = 1024) -> int | None:
