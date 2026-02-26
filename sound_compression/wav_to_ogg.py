@@ -41,19 +41,23 @@ def wav_to_ogg(folder, progress_callback=None):
                     print("File", filepath, "contains loops skipping.")
                     continue
 
-                old_size += os.path.getsize(filepath)
-                sound = pydub.AudioSegment.from_wav(filepath)
+                try:
+                    old_size += os.path.getsize(filepath)
+                    sound = pydub.AudioSegment.from_wav(filepath)
 
-                new_filepath = filepath.replace(".wav", ".ogg")
-                sound.export(new_filepath, format="ogg")
-                new_size += os.path.getsize(new_filepath)
+                    new_filepath = filepath.replace(".wav", ".ogg")
+                    sound.export(new_filepath, format="ogg", codec="libvorbis", parameters=["-q:a", "4"])
+                    new_size += os.path.getsize(new_filepath)
 
-                file_name = os.path.basename(filepath)
-                replace_count += 1
-                replaced_files[file_name] = file_name.replace(".wav", ".ogg")
-                os.remove(filepath)
+                    file_name = os.path.basename(filepath)
+                    replace_count += 1
+                    replaced_files[file_name] = file_name.replace(".wav", ".ogg")
+                    os.remove(filepath)
 
-                print("Converted", filepath, "to ogg successfully.")
+                    print("Converted", filepath, "to ogg successfully.")
+                except Exception as e:
+                    print(f"Failed to convert {filepath}: {e}")
+                    continue
 
     for path, subdirs, files in os.walk(folder):
         for name in files:
