@@ -361,7 +361,8 @@ class MainWindow(QtWidgets.QMainWindow):
         """Calculate total size of all files in folder"""
         total_size = 0
         try:
-            for root, _, files in os.walk(folder):
+            for root, dirs, files in os.walk(folder):
+                dirs[:] = [d for d in dirs if d != ".git"]
                 for filename in files:
                     file_path = os.path.join(root, filename)
                     try:
