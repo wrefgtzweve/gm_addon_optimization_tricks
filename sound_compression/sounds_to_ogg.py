@@ -156,7 +156,7 @@ def _convert_sound(filepath, preserve_filename=False):
                 pass
 
     if preserve_filename:
-        print(f"Converted {filepath} to OGG while keeping its filename.")
+        print(f"Converted {filepath}")
         return old_size, new_size, None, None
 
     print(f"Converted {filepath} to {new_filepath} successfully.")
