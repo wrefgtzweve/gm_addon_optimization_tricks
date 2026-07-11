@@ -105,14 +105,43 @@ def _has_wav_markers(filepath):
     return False
 
 
-def _convert_sound(filepath, preserve_filename=False):
-    extension = os.path.splitext(filepath)[1].lower()
+def _detect_audio_format(filepath):
+    """Detect common audio containers from their contents, not their extension."""
+    try:
+        with open(filepath, "rb") as audio_file:
+            header = audio_file.read(16)
+    except OSError:
+        return None
+
+    if len(header) >= 12 and header[:4] in {b"RIFF", b"RF64"} and header[8:12] == b"WAVE":
+        return "wav"
+    if header.startswith(b"OggS"):
+        return "ogg"
+    if header.startswith(b"fLaC"):
+        return "flac"
+    if header.startswith(b"ID3"):
+        return "mp3"
+
+    # MP3 files without an ID3 tag commonly begin with an MPEG audio frame.
+    if len(header) >= 2 and header[0] == 0xFF and header[1] & 0xE0 == 0xE0:
+        return "mp3"
+
+    return None
+
+
+def _convert_sound(filepath, preserve_filename=False, audio_format=None):
     temporary_filepath = None
     try:
-        if extension == ".wav":
-            sound = pydub.AudioSegment.from_wav(filepath)
-        else:
-            sound = pydub.AudioSegment.from_mp3(filepath)
+        audio_format = audio_format or _detect_audio_format(filepath)
+        if audio_format == "ogg":
+            return None  # Already in the target format, no conversion needed.
+        if audio_format not in {"wav", "mp3"}:
+            print(f"Skipping unsupported or invalid audio file {filepath}: format could not be detected.")
+            return None
+
+        # Do not infer the input format from the filename. Some addon files have
+        # a WAV/MP3 extension while containing a different audio format.
+        sound = pydub.AudioSegment.from_file(filepath, format=audio_format)
 
         old_size = os.path.getsize(filepath)
         if preserve_filename:
@@ -143,10 +172,16 @@ def _convert_sound(filepath, preserve_filename=False):
         else:
             os.remove(filepath)
     except pydub.exceptions.CouldntDecodeError as error:
-        print(f"Skipping unreadable sound {filepath}: {error}")
+        # FFmpeg includes its complete stderr output in this exception. Keep the
+        # log readable while still indicating that the file itself was left alone.
+        print(
+            f"Skipping unreadable sound {filepath} "
+            f"(detected as {audio_format or 'unknown'}; the audio data may be invalid or mislabeled)."
+        )
         return None
     except Exception as error:
-        print(f"Failed to convert {filepath}: {error}")
+        error_summary = str(error).splitlines()[-1] if str(error).strip() else "unknown error"
+        print(f"Failed to convert {filepath}: {error_summary}")
         return None
     finally:
         if temporary_filepath:
@@ -229,10 +264,19 @@ def sounds_to_ogg(folder, extra_lua_folders=None, preserve_filenames=False, prog
         if progress_callback:
             progress_callback(processed, total)
 
-        if os.path.splitext(filepath)[1].lower() == ".wav" and _has_wav_markers(filepath):
+        audio_format = _detect_audio_format(filepath)
+        if audio_format not in {"wav", "mp3"}:
+            print(f"Skipping unsupported or invalid audio file {filepath}: format could not be detected.")
             continue
 
-        result = _convert_sound(filepath, preserve_filename=preserve_filenames)
+        if audio_format == "wav" and _has_wav_markers(filepath):
+            continue
+
+        result = _convert_sound(
+            filepath,
+            preserve_filename=preserve_filenames,
+            audio_format=audio_format,
+        )
         if result is None:
             continue
 
