@@ -3,7 +3,7 @@ Desktop tool to optimize Garry's Mod addons/maps
 
 ## Features
 - Material compression and resizing
-- Sound compression (WAV to MP3/OGG conversion)
+- Sound compression (referenced WAV/MP3 to OGG conversion, with an option to keep original filenames)
 - Remove unused files from addons
 - Find and analyze map content
 - Easy-to-use desktop interface

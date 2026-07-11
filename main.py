@@ -16,10 +16,7 @@ from material_compression.resize_and_compress import resize_and_compress
 from material_compression.resize_png import clamp_pngs
 from material_compression.remove_mipmaps import remove_mipmaps
 from material_compression.resize_singlecolor import resize_single_color_images
-from sound_compression.wav_to_mp3 import wav_to_mp3
-from sound_compression.wav_to_ogg import wav_to_ogg
-from sound_compression.mp3_to_ogg import mp3_to_ogg
-from sound_compression.trim_empty import trim_empty_audio
+from sound_compression.sounds_to_ogg import sounds_to_ogg
 from mapping.find_map_content import find_map_content
 
 
@@ -199,14 +196,8 @@ class MainWindow(QtWidgets.QMainWindow):
         audio_grid = QtWidgets.QGridLayout()
         audio_grid.setHorizontalSpacing(12)
         audio_grid.setVerticalSpacing(8)
-        add_button(audio_grid, 0, ".wav to .ogg (skips looped/cued)", self.on_wav_to_ogg,
-                   tooltip="Convert WAV audio files to OGG format for better compression. Skips files with loop points or cue points.")
-        add_button(audio_grid, 1, ".wav to .mp3 (skips looped/cued)", self.on_wav_to_mp3,
-                   tooltip="Convert WAV audio files to MP3 format. Skips files with loop points or cue points.")
-        add_button(audio_grid, 2, ".mp3 to .ogg", self.on_mp3_to_ogg,
-                   tooltip="Convert MP3 audio files to OGG format. OGG is generally better for Garry's Mod.")
-        add_button(audio_grid, 3, "Trim empty audio tail", self.on_trim_empty_audio,
-                   tooltip="Remove silent/empty audio at the end of sound files to reduce file size.")
+        add_button(audio_grid, 0, "Referenced .wav/.mp3 to .ogg", self.on_sounds_to_ogg,
+             tooltip="Convert WAV and MP3 files referenced by Lua, TXT, or JSON files to OGG. You can optionally keep the original filenames. Skips unreferenced sounds and WAV files with loop points or cue points.")
         audio_group.setLayout(audio_grid)
         actions_layout.addWidget(audio_group)
 
@@ -443,8 +434,22 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         remove = self.ask_yes_no("Remove files?", "Do you want to remove the found unused files? This isn't 100% and can remove used files!")
 
+        extra_lua_folders = []
+        if self.ask_yes_no("Extra Lua folders?", "Do you want to scan additional folders for Lua files and soundscripts?\n\n"
+                           "This is REQUIRED if your content pack has no lua/ folder — point to the companion\n"
+                           "addon that contains the Lua code referencing these assets.\n\n"
+                           "(Lua, scripts/*.txt, and particle PCF files will all be scanned)"):
+            while True:
+                extra = self.ask_directory("Select a folder containing extra Lua/script files")
+                if extra:
+                    extra_lua_folders.append(extra)
+                    if not self.ask_yes_no("Add more?", "Add another folder to scan?"):
+                        break
+                else:
+                    break
+
         def task():
-            size, count = unused_content(folder, remove)
+            size, count = unused_content(folder, remove, extra_lua_folders=extra_lua_folders)
             print((f"Removed {count} unused files, saving {format_size(size)}") if remove else (f"Found {count} unused files, taking up {format_size(size)}"))
             return size, count
 
@@ -510,41 +515,40 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.start_task("Clamp PNG file sizes", task, determinate=True)
 
-    def on_wav_to_mp3(self):
+    def on_sounds_to_ogg(self):
         folder = self.ensure_folder()
         if not folder:
             return
+
+        preserve_filenames = self.ask_yes_no(
+            "Keep sound filenames?",
+            "Convert the sound data to OGG while keeping the original .wav/.mp3 filenames?\n\n"
+            "Garry's Mod can use these files because it checks the sound data type rather than the filename.\n"
+            "Code references will not be renamed. This may be incompatible with other tools that rely on file extensions.",
+        )
+
+        extra_lua_folders = []
+        if self.ask_yes_no("Extra Lua folders?", "Do you want to scan additional folders for Lua files and soundscripts?\n\n"
+                           "This is REQUIRED if your content pack has no lua/ folder — point to the companion\n"
+                           "addon that contains the Lua code referencing these sounds."):
+            while True:
+                extra = self.ask_directory("Select a folder containing extra Lua/script files")
+                if extra:
+                    extra_lua_folders.append(extra)
+                    if not self.ask_yes_no("Add more?", "Add another folder to scan?"):
+                        break
+                else:
+                    break
         
         def task():
-            return wav_to_mp3(folder, progress_callback=self.worker.progress.emit)
+            return sounds_to_ogg(
+                folder,
+                extra_lua_folders=extra_lua_folders,
+                preserve_filenames=preserve_filenames,
+                progress_callback=self.worker.progress.emit,
+            )
         
-        self.start_task(".wav to .mp3", task, determinate=True)
-
-    def on_wav_to_ogg(self):
-        folder = self.ensure_folder()
-        if not folder:
-            return
-        
-        def task():
-            return wav_to_ogg(folder, progress_callback=self.worker.progress.emit)
-        
-        self.start_task(".wav to .ogg", task, determinate=True)
-
-    def on_mp3_to_ogg(self):
-        folder = self.ensure_folder()
-        if not folder:
-            return
-        self.start_task(".mp3 to .ogg", mp3_to_ogg, folder)
-
-    def on_trim_empty_audio(self):
-        folder = self.ensure_folder()
-        if not folder:
-            return
-        
-        def task():
-            return trim_empty_audio(folder, progress_callback=self.worker.progress.emit)
-        
-        self.start_task("Trim empty audio", task, determinate=True)
+        self.start_task("Referenced WAV/MP3 to OGG", task, determinate=True)
 
     def on_find_map_content(self):
         folder = self.ensure_folder()
