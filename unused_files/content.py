@@ -6,6 +6,8 @@ from srctools.filesys import RawFileSystem
 from srctools.mdl import Model
 from srctools.vmt import Material
 
+from utils.formatting import format_size
+
 
 # Compound/longer extensions must come before shorter ones so stripping works correctly.
 MODEL_SUPPORT_EXTS = (
@@ -468,16 +470,24 @@ def unused_content(path: str, remove: bool = False, extra_lua_folders=None):
     total_size = 0
     total_count = 0
     print(f'\n{("Removing" if remove else "Reporting")} {len(candidates)} candidates...')
+    candidate_sizes = []
     for relative_path, label in candidates:
         full_path = os.path.join(path, relative_path.replace('/', os.sep))
         try:
             size = os.path.getsize(full_path)
         except OSError:
             size = 0
+        candidate_sizes.append((size, relative_path, label))
+
+    if not remove:
+        candidate_sizes.sort(key=lambda candidate: candidate[0])
+
+    for size, relative_path, label in candidate_sizes:
+        full_path = os.path.join(path, relative_path.replace('/', os.sep))
         total_size += size
         total_count += 1
         action = 'Removing' if remove else 'Found'
-        print(f'{action} unused {label}: {relative_path}')
+        print(f'{action} unused {label} ({format_size(size)}): {relative_path}')
         if remove:
             try:
                 os.remove(full_path)
