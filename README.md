@@ -1,4 +1,4 @@
-# gm_addon_optimization_tricks
+# gm_content_optimizer
 Desktop tool to optimize Garry's Mod addons/maps
 
 ## Features
@@ -24,11 +24,11 @@ If you're new to Git, follow these steps:
    ```
 3. Clone the repository:
    ```bash
-   git clone https://github.com/wrefgtzweve/gm_addon_optimization_tricks.git
+   git clone https://github.com/wrefgtzweve/gm_content_optimizer.git
    ```
 4. Enter the project directory:
    ```bash
-   cd gm_addon_optimization_tricks
+   cd gm_content_optimizer
    ```
 
 ### Step 2: Run the Tool
