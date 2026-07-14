@@ -39,12 +39,12 @@ def remove_mipmaps(folder, progress_callback=None):
         
         vtf = vtfpp.VTF(file_path)
         old_mipcount = vtf.mip_count
-        if old_mipcount <= 1:
+        if old_mipcount == 1:
             new_size += old_file_size
             processed_count += 1
             continue
         
-        vtf.mip_count = 0
+        vtf.mip_count = 1
         vtf.bake_to_file(file_path)
         
         success_count += 1
