@@ -39,12 +39,14 @@ def remove_mipmaps(folder, progress_callback=None):
         
         vtf = vtfpp.VTF(file_path)
         old_mipcount = vtf.mip_count
-        if old_mipcount == 1:
+        if old_mipcount == 1 and (vtf.flags & vtfpp.VTF.Flags.V0_NO_LOD.value):
             new_size += old_file_size
             processed_count += 1
             continue
         
         vtf.mip_count = 1
+        # Add V0_NO_LOD to prevent texture loading bug
+        vtf.flags = vtf.flags | vtfpp.VTF.Flags.V0_NO_LOD.value
         vtf.bake_to_file(file_path)
         
         success_count += 1
@@ -52,7 +54,7 @@ def remove_mipmaps(folder, progress_callback=None):
         new_size += new_file_size
         saved_bytes = old_file_size - new_file_size
         saved_mb = saved_bytes / (1024 * 1024)
-        print(f"✓ {file_path} - {old_mipcount} -> 0 (saved {saved_mb:.2f} MB)")
+        print(f"✓ {file_path} - {old_mipcount} -> 1 (saved {saved_mb:.2f} MB)")
         
         processed_count += 1
     
