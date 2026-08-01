@@ -17,6 +17,7 @@ from material_compression.resize_png import clamp_pngs
 from material_compression.remove_mipmaps import remove_mipmaps
 from material_compression.resize_singlecolor import resize_single_color_images
 from sound_compression.sounds_to_ogg import sounds_to_ogg
+from sound_compression.fix_sound_extensions import fix_sound_extensions
 from mapping.find_map_content import find_map_content
 
 
@@ -198,6 +199,8 @@ class MainWindow(QtWidgets.QMainWindow):
         audio_grid.setVerticalSpacing(8)
         add_button(audio_grid, 0, "Referenced .wav/.mp3 to .ogg", self.on_sounds_to_ogg,
              tooltip="Convert WAV and MP3 files referenced by Lua, TXT, or JSON files to OGG. You can optionally keep the original filenames. Skips unreferenced sounds and WAV files with loop points or cue points.")
+        add_button(audio_grid, 1, "Fix sound file extensions", self.on_fix_sound_extensions,
+             tooltip="Re-encode sounds whose contents don't match their file extension.\nFor example, a .wav file that secretly contains OGG data becomes a real WAV file.\nUse this to undo 'keep original filenames' OGG conversions.\nSkips unreferenced sounds and WAV files with loop points or cue points.")
         audio_group.setLayout(audio_grid)
         actions_layout.addWidget(audio_group)
 
@@ -549,6 +552,19 @@ class MainWindow(QtWidgets.QMainWindow):
             )
         
         self.start_task("Referenced WAV/MP3 to OGG", task, determinate=True)
+
+    def on_fix_sound_extensions(self):
+        folder = self.ensure_folder()
+        if not folder:
+            return
+
+        def task():
+            return fix_sound_extensions(
+                folder,
+                progress_callback=self.worker.progress.emit,
+            )
+
+        self.start_task("Fix sound file extensions", task, determinate=True)
 
     def on_find_map_content(self):
         folder = self.ensure_folder()
