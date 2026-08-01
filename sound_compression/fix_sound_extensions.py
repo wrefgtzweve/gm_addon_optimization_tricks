@@ -20,6 +20,28 @@ _EXTENSION_EXPORT_SETTINGS = {
     ".mp3": {"format": "mp3", "codec": "libmp3lame", "parameters": ["-q:a", "4"]},
 }
 
+# The Source engine only supports 8-bit and 16-bit WAV files and refuses to
+# load 32-bit ones ("Unsupported 32-bit wave file"). Re-encoding always
+# downmixes to 16-bit so the converted files actually load in-game.
+_SOURCE_ENGINE_WAV_SAMPLE_WIDTH = 2  # bytes; 16-bit PCM
+
+
+def _is_32bit_wav(filepath):
+    """Check whether ``filepath`` is a WAV file with 32-bit samples."""
+    try:
+        with open(filepath, "rb") as wav_file:
+            header = wav_file.read(64)
+    except OSError:
+        return False
+
+    if len(header) < 26 or header[:4] != b"RIFF" or header[8:12] != b"WAVE":
+        return False
+
+    # The "fmt " chunk starts right after the RIFF header in practice. The
+    # bits-per-sample field sits at offset 14 within that chunk (offset 34 in
+    # the file). This mirrors how the Source engine parses the header.
+    return header[12:16] == b"fmt " and int.from_bytes(header[34:36], "little") == 32
+
 
 def _convert_to_extension_format(filepath, audio_format):
     """Re-encode ``filepath`` so its contents match its extension, in place."""
@@ -30,6 +52,11 @@ def _convert_to_extension_format(filepath, audio_format):
         # Do not infer the input format from the filename. The whole point of
         # this tool is that the extension lies about the actual audio format.
         sound = pydub.AudioSegment.from_file(filepath, format=audio_format)
+
+        if extension == ".wav" and sound.sample_width > _SOURCE_ENGINE_WAV_SAMPLE_WIDTH:
+            # The Source engine only supports 8/16-bit WAV files. Downmix so
+            # the converted file actually loads in-game.
+            sound = sound.set_sample_width(_SOURCE_ENGINE_WAV_SAMPLE_WIDTH)
 
         old_size = os.path.getsize(filepath)
         temporary_file = tempfile.NamedTemporaryFile(
@@ -91,6 +118,11 @@ def fix_sound_extensions(folder, progress_callback=None):
         extension = os.path.splitext(filepath)[1].lower()
         if audio_format is None:
             print(f"Skipping {filepath}: format could not be detected.")
+            continue
+        if audio_format == "wav" and extension == ".wav" and _is_32bit_wav(filepath):
+            # A real WAV file, but with 32-bit samples the Source engine
+            # refuses to load. Queue it for a 16-bit re-encode.
+            mismatched_files.append((filepath, audio_format))
             continue
         if audio_format == extension.lstrip("."):
             continue  # Contents already match the extension.
