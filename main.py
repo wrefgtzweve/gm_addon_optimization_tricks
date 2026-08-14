@@ -129,17 +129,31 @@ class MainWindow(QtWidgets.QMainWindow):
             self.folder_edit.setText(last_folder)
             self.calculate_initial_folder_size(last_folder)
 
+        self.backup_banner = QtWidgets.QWidget()
+        self.backup_banner.setStyleSheet(
+            "QWidget#backupBanner { background-color: #5a3d00; border: 1px solid #ffb300; border-radius: 4px; }"
+            "QLabel { color: #ffe082; background: transparent; }"
+            "QPushButton { background-color: #ffb300; color: #3e2723; font-weight: bold; "
+            "padding: 4px 12px; border: none; border-radius: 3px; }"
+            "QPushButton:hover { background-color: #ffc107; }"
+        )
+        self.backup_banner.setObjectName("backupBanner")
+        backup_row = QtWidgets.QHBoxLayout(self.backup_banner)
+        backup_row.setContentsMargins(10, 8, 10, 8)
         backup_label = QtWidgets.QLabel(
             "⚠️ <b>Back up your content folder first.</b> "
             "This tool can permanently delete or overwrite files. There is no undo."
         )
         backup_label.setTextFormat(QtCore.Qt.RichText)
         backup_label.setWordWrap(True)
-        backup_label.setStyleSheet(
-            "QLabel { background-color: #5a3d00; color: #ffe082; padding: 8px 10px; "
-            "border: 1px solid #ffb300; border-radius: 4px; }"
-        )
-        main_layout.addWidget(backup_label)
+        acknowledge_btn = QtWidgets.QPushButton("Acknowledge")
+        acknowledge_btn.setCursor(QtCore.Qt.PointingHandCursor)
+        acknowledge_btn.clicked.connect(self.acknowledge_backup_warning)
+        backup_row.addWidget(backup_label, 1)
+        backup_row.addWidget(acknowledge_btn, 0, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        main_layout.addWidget(self.backup_banner)
+        if _cfg.get("backup_warning_acknowledged"):
+            self.backup_banner.hide()
 
         # Legend
         legend_label = QtWidgets.QLabel("💡 <span style='color: #4CAF50;'>Green buttons</span> generally have no downsides and can always be used.")
@@ -283,6 +297,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 json.dump(cfg, f, indent=2)
         except Exception as e:
             print(f"Failed to save config: {e}")
+
+    def acknowledge_backup_warning(self):
+        self._save_config({"backup_warning_acknowledged": True})
+        self.backup_banner.hide()
 
     def choose_folder(self):
         folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select content folder")
