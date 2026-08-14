@@ -188,7 +188,7 @@ class MainWindow(QtWidgets.QMainWindow):
         add_button(cleanup_grid, 3, "Find and copy content used by .bsp", self.on_find_map_content,
                    tooltip="Extract all content referenced by a BSP map file and copy it to a new folder for easy map packing.")
         add_button(cleanup_grid, 4, "Find duplicate files (scan/remove)", self.on_find_duplicates, recommended=True,
-                   tooltip="Scan for duplicate files and optionally remove them. Keeps the first occurrence of each duplicate.")
+                   tooltip="Scan for duplicate files (by content hash) and optionally remove them. Keeps the first occurrence of each duplicate when removing.")
         cleanup_group.setLayout(cleanup_grid)
         actions_layout.addWidget(cleanup_group)
 
