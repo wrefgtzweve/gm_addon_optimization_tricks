@@ -129,6 +129,18 @@ class MainWindow(QtWidgets.QMainWindow):
             self.folder_edit.setText(last_folder)
             self.calculate_initial_folder_size(last_folder)
 
+        backup_label = QtWidgets.QLabel(
+            "⚠️ <b>Back up your content folder first.</b> "
+            "This tool can permanently delete or overwrite files. There is no undo."
+        )
+        backup_label.setTextFormat(QtCore.Qt.RichText)
+        backup_label.setWordWrap(True)
+        backup_label.setStyleSheet(
+            "QLabel { background-color: #5a3d00; color: #ffe082; padding: 8px 10px; "
+            "border: 1px solid #ffb300; border-radius: 4px; }"
+        )
+        main_layout.addWidget(backup_label)
+
         # Legend
         legend_label = QtWidgets.QLabel("💡 <span style='color: #4CAF50;'>Green buttons</span> generally have no downsides and can always be used.")
         legend_label.setTextFormat(QtCore.Qt.RichText)
