@@ -1,6 +1,5 @@
-name: Build GMAddonOptimizer EXE
+name: Build standalone binary
 
-# Manual trigger only — Actions tab -> this workflow -> "Run workflow"
 on:
   workflow_dispatch:
     inputs:
@@ -20,7 +19,7 @@ on:
         default: false
 
 permissions:
-  contents: write        # required to create the release + tag
+  contents: write
 
 jobs:
   build:
@@ -56,7 +55,7 @@ jobs:
         shell: pwsh
         run: |
           $args = @("--clean", "--noconfirm", "--onefile", "--name", "GMAddonOptimizer")
-          if (-not ${{ inputs.console }}) { $args += "--windowed" }
+            if ("${{ inputs.console }}" -ne "true") { $args += "--windowed" }
           if (Test-Path icon.ico) { $args += @("--icon", "icon.ico") }
           $args += "main.py"
           pyinstaller @args
