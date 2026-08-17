@@ -5,50 +5,24 @@ Desktop tool to optimize Garry's Mod addons/maps
 - Material compression and resizing
 - Sound compression (referenced WAV/MP3 to OGG conversion, with an option to keep original filenames)
 - Remove unused files from addons
-- Find and analyze map content
-- Easy-to-use desktop interface
+## Install (Windows)
 
-## Prerequisites
-- Python 3.10 or higher
-- Git (for cloning the repository)
+1. Open the [Releases page](https://github.com/wrefgtzweve/gm_content_optimizer/releases/latest).
+2. Download `gm_content_optimizer.exe` from the latest release's **Assets** section.
+3. Place the file in a folder of your choice and double-click it to launch the application.
 
-## Installation
+## Build Locally (Windows)
 
-### Step 1: Clone the Repository
-If you're new to Git, follow these steps:
+Install Python 3.11, then run the following from the repository root in PowerShell:
 
-1. Open a terminal (Command Prompt, PowerShell, or Git Bash on Windows)
-2. Navigate to where you want to install the tool:
-   ```bash
-   cd C:\Users\YourUsername\Documents
-   ```
-3. Clone the repository:
-   ```bash
-   git clone https://github.com/wrefgtzweve/gm_content_optimizer.git
-   ```
-4. Enter the project directory:
-   ```bash
-   cd gm_content_optimizer
-   ```
+```powershell
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt pyinstaller pillow
+pyinstaller --clean --noconfirm --onefile --windowed --name gm_content_optimizer --icon icon.ico --add-data "icon.png;." main.py
+```
 
-### Step 2: Run the Tool
+The executable is created at `dist\gm_content_optimizer.exe`.
 
-#### Windows (Easy Method)
-Simply double-click the `run.bat` file in the project folder.
-
-This will automatically:
-- Automatically update tool if needed
-- Create a virtual environment
-- Install all required dependencies
-- Launch the desktop UI
-
-#### Alternative Method (All Platforms)
-If you prefer to run it manually:
-
-1. Install the required dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
 
 2. Run the application:
    ```bash
