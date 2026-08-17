@@ -1,0 +1,102 @@
+name: Build GMAddonOptimizer EXE
+
+# Manual trigger only — Actions tab -> this workflow -> "Run workflow"
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.0.3). Leave blank to auto-name from the run number.'
+        required: false
+        default: ''
+      prerelease:
+        description: 'Mark the release as a pre-release'
+        type: boolean
+        required: false
+        default: false
+      console:
+        description: 'Build with a console window (use this to debug a crashing exe)'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write        # required to create the release + tag
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pyinstaller pillow
+
+      - name: Generate icon.ico
+        # main.py ships icon.png; PyInstaller needs .ico for the exe icon
+        run: |
+          if (Test-Path icon.png) {
+            python -c "from PIL import Image; Image.open('icon.png').save('icon.ico', sizes=[(256,256),(128,128),(64,64),(48,48),(32,32),(16,16)])"
+            Write-Host "icon.ico generated"
+          } else {
+            Write-Host "no icon.png found, building without a custom icon"
+          }
+
+      - name: Switch spec to console mode
+        if: ${{ inputs.console }}
+        run: |
+          (Get-Content gmaot.spec) -replace 'console=False', 'console=True' | Set-Content gmaot.spec
+          Write-Host "spec patched: console=True"
+
+      - name: Build single-file exe
+        run: pyinstaller --clean --noconfirm gmaot.spec
+
+      - name: Verify build output
+        run: |
+          if (-not (Test-Path dist\GMAddonOptimizer.exe)) {
+            Write-Error "Build produced no exe — check the PyInstaller log above."
+            exit 1
+          }
+          $mb = [math]::Round((Get-Item dist\GMAddonOptimizer.exe).Length / 1MB, 1)
+          Write-Host "Built GMAddonOptimizer.exe ($mb MB)"
+
+      - name: Compute release tag
+        id: meta
+        shell: bash
+        run: |
+          TAG="${{ inputs.tag }}"
+          if [ -z "$TAG" ]; then
+            TAG="build-$(date +'%Y.%m.%d')-${{ github.run_number }}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Release tag: $TAG"
+
+      - name: Upload build artifact
+        # keeps a copy even if the release step is skipped or fails
+        uses: actions/upload-artifact@v4
+        with:
+          name: GMAddonOptimizer-${{ steps.meta.outputs.tag }}
+          path: dist/GMAddonOptimizer.exe
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.meta.outputs.tag }}" `
+            "dist/GMAddonOptimizer.exe" `
+            --title "GMAddonOptimizer ${{ steps.meta.outputs.tag }}" `
+            --target "${{ github.sha }}" `
+            --generate-notes `
+            ${{ inputs.prerelease && '--prerelease' || '' }}
