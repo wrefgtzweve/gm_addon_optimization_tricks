@@ -39,35 +39,26 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
-          python -m pip install pyinstaller pillow
-
-      - name: Generate icon.ico
-        # main.py ships icon.png; PyInstaller needs .ico for the exe icon
-        run: |
-          if (Test-Path icon.png) {
-            python -c "from PIL import Image; Image.open('icon.png').save('icon.ico', sizes=[(256,256),(128,128),(64,64),(48,48),(32,32),(16,16)])"
-            Write-Host "icon.ico generated"
-          } else {
-            Write-Host "no icon.png found, building without a custom icon"
-          }
+          python -m pip install pyinstaller
 
       - name: Build single-file exe
         shell: pwsh
         run: |
-          $args = @("--clean", "--noconfirm", "--onefile", "--name", "GMAddonOptimizer")
+          $args = @("--clean", "--noconfirm", "--onefile", "--name", "gm_content_optimizer")
             if ("${{ inputs.console }}" -ne "true") { $args += "--windowed" }
-          if (Test-Path icon.ico) { $args += @("--icon", "icon.ico") }
+          $args += @("--icon", "icon.ico")
+          if (Test-Path icon.png) { $args += @("--add-data", "icon.png;.") }
           $args += "main.py"
           pyinstaller @args
 
       - name: Verify build output
         run: |
-          if (-not (Test-Path dist\GMAddonOptimizer.exe)) {
+          if (-not (Test-Path dist\gm_content_optimizer.exe)) {
             Write-Error "Build produced no exe — check the PyInstaller log above."
             exit 1
           }
-          $mb = [math]::Round((Get-Item dist\GMAddonOptimizer.exe).Length / 1MB, 1)
-          Write-Host "Built GMAddonOptimizer.exe ($mb MB)"
+          $mb = [math]::Round((Get-Item dist\gm_content_optimizer.exe).Length / 1MB, 1)
+          Write-Host "Built gm_content_optimizer.exe ($mb MB)"
 
       - name: Compute release tag
         id: meta
@@ -85,7 +76,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: GMAddonOptimizer-${{ steps.meta.outputs.tag }}
-          path: dist/GMAddonOptimizer.exe
+          path: dist/gm_content_optimizer.exe
           if-no-files-found: error
           retention-days: 30
 
@@ -94,7 +85,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ steps.meta.outputs.tag }}" `
-            "dist/GMAddonOptimizer.exe" `
+            "dist/gm_content_optimizer.exe" `
             --title "GMAddonOptimizer ${{ steps.meta.outputs.tag }}" `
             --target "${{ github.sha }}" `
             --generate-notes `

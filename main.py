@@ -21,6 +21,16 @@ from sound_compression.fix_sound_extensions import fix_sound_extensions
 from mapping.find_map_content import find_map_content
 
 
+def config_path() -> str:
+    if getattr(sys, "frozen", False):
+        config_dir = QtCore.QStandardPaths.writableLocation(
+            QtCore.QStandardPaths.StandardLocation.AppConfigLocation
+        )
+        os.makedirs(config_dir, exist_ok=True)
+        return os.path.join(config_dir, "config.json")
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+
+
 class SignalStream(QtCore.QObject):
     text_emitted = QtCore.Signal(str)
 
@@ -92,7 +102,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if os.path.exists(icon_path):
             self.setWindowIcon(QtGui.QIcon(icon_path))
 
-        self._config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+        self._config_path = config_path()
         self.thread: QtCore.QThread | None = None
         self.worker: TaskWorker | None = None
         self.initial_folder_size: int = 0
@@ -672,6 +682,11 @@ def main():
     
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     app = QtWidgets.QApplication(sys.argv)
+    QtCore.QCoreApplication.setOrganizationName("redox")
+    QtCore.QCoreApplication.setApplicationName("GMod Content Optimizer")
+    icon_path = os.path.join(os.path.dirname(__file__), 'icon.png')
+    if os.path.exists(icon_path):
+        app.setWindowIcon(QtGui.QIcon(icon_path))
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
