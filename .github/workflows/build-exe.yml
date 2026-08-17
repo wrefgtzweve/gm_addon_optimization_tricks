@@ -75,7 +75,7 @@ jobs:
         # keeps a copy even if the release step is skipped or fails
         uses: actions/upload-artifact@v4
         with:
-          name: GMAddonOptimizer-${{ steps.meta.outputs.tag }}
+          name: gm_content_optimizer-${{ steps.meta.outputs.tag }}
           path: dist/gm_content_optimizer.exe
           if-no-files-found: error
           retention-days: 30
@@ -86,7 +86,7 @@ jobs:
         run: |
           gh release create "${{ steps.meta.outputs.tag }}" `
             "dist/gm_content_optimizer.exe" `
-            --title "GMAddonOptimizer ${{ steps.meta.outputs.tag }}" `
+            --title "gm_content_optimizer ${{ steps.meta.outputs.tag }}" `
             --target "${{ github.sha }}" `
             --generate-notes `
             ${{ inputs.prerelease && '--prerelease' || '' }}
