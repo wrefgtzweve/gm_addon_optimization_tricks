@@ -52,14 +52,14 @@ jobs:
             Write-Host "no icon.png found, building without a custom icon"
           }
 
-      - name: Switch spec to console mode
-        if: ${{ inputs.console }}
-        run: |
-          (Get-Content gmaot.spec) -replace 'console=False', 'console=True' | Set-Content gmaot.spec
-          Write-Host "spec patched: console=True"
-
       - name: Build single-file exe
-        run: pyinstaller --clean --noconfirm gmaot.spec
+        shell: pwsh
+        run: |
+          $args = @("--clean", "--noconfirm", "--onefile", "--name", "GMAddonOptimizer")
+          if (-not ${{ inputs.console }}) { $args += "--windowed" }
+          if (Test-Path icon.ico) { $args += @("--icon", "icon.ico") }
+          $args += "main.py"
+          pyinstaller @args
 
       - name: Verify build output
         run: |
